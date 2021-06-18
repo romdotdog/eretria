@@ -63,9 +63,9 @@ impl Parser<'_> {
         return self.prefixexpr();
     }
 
-    pub fn block(&mut self) -> Vec<Box<Expr>> {
+    fn block(&mut self) -> Vec<Box<Expr>> {
         let mut block = Vec::new();
-        loop {
+        while self.lexer.peek().is_some() {
             block.push(self.expr());
             if let Some(tok) = self.lexer.peek() {
                 if tok != &Token::Semicolon {
@@ -75,6 +75,15 @@ impl Parser<'_> {
                 break;
             }
         }
+        block
+    }
+
+    pub fn parse(&mut self) -> Vec<Box<Expr>> {
+        let block = self.block();
+        assert!(
+            self.lexer.next().is_none(),
+            "block didn't end correctly. (are you missing a semicolon?)"
+        );
         block
     }
 }

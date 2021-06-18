@@ -33,5 +33,5 @@ fn main() {
 
     let lexer = Token::lexer(buf.as_str());
     let mut parser = Parser::new(lexer);
-    parser.block();
+    parser.parse();
 }
