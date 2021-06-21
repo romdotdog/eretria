@@ -50,10 +50,10 @@ impl Parser<'_> {
     fn expr(&mut self) -> Box<Expr> {
         if let Some(p) = self.lexer.peek() {
             if p == &Token::Ident {
-                let pn = self.lexer.next().unwrap();
+                let pn = self.lexer.next().unwrap(); // Can unwrap because we peeked.
                 if let Some(p1) = self.lexer.peek() {
                     if p1 == &Token::Equals {
-                        self.lexer.next().unwrap();
+                        self.lexer.next().unwrap(); // Can unwrap because we peeked here too.
                         return Box::new(Expr::Assignment(pn, self.expr()));
                     }
                 }
