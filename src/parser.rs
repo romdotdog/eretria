@@ -40,9 +40,7 @@ impl Parser<'_> {
                 expect!(self.lexer.next(), "CloseParen", Token::CloseParen);
                 Box::new(expr)
             }
-            Token::Ident | Token::F64 | Token::F32 | Token::I64 | Token::I32 => {
-                Box::new(Expr::Literal(t))
-            }
+            Token::Ident | Token::Float(..) | Token::Integer(..) => Box::new(Expr::Literal(t)),
             _ => panic!("expected parentheses or literal in prefixexpr"),
         }
     }
