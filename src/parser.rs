@@ -15,6 +15,7 @@ pub enum Expr {
 
 pub enum Stat {
     Fn(String, Vec<Box<Expr>>, Box<Expr>),
+    Data(u64, String),
 }
 
 pub struct Parser<'a> {
@@ -102,7 +103,7 @@ impl Parser<'_> {
             }
         }
         let next = self.lexer.next();
-        assert!(next.is_some(), "expected '}', found <eof>.");
+        assert!(next.is_some(), "expected '}}', found <eof>.");
 
         assert_eq!(
             next.unwrap(),
@@ -126,6 +127,20 @@ impl Parser<'_> {
                     } else {
                         // TODO: make error message better
                         panic!("expected function name.");
+                    }
+                }
+                &Token::Data => {
+                    self.lexer.next().unwrap();
+                    expect!(self.lexer.next(), "'['", Token::OpenBracket);
+                    if let Some(Token::Integer(pos)) = self.lexer.next() {
+                        assert!(pos > -1, "`data` position may not be negative");
+                        expect!(self.lexer.next(), "']'", Token::CloseBracket);
+                        expect!(self.lexer.next(), "'='", Token::Equals);
+                        if let Some(Token::String(data)) = self.lexer.next() {
+                            program.push(Stat::Data(pos as u64, data));
+                        }
+                    } else {
+                        panic!("expected integer, e.g. data[<int>]")
                     }
                 }
                 _ => {}
