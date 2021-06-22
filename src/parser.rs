@@ -65,7 +65,6 @@ impl Parser<'_> {
                         if let Some(p1) = self.lexer.peek() {
                             if p1 == &Token::Equals {
                                 self.lexer.next().unwrap();
-                                println!("{:?}", self.lexer.peek());
                                 return Box::new(Expr::Assignment(s, self.expr()));
                             }
                         }
@@ -93,7 +92,6 @@ impl Parser<'_> {
         while self.lexer.peek().is_some() {
             block.push(self.expr());
             if let Some(tok) = self.lexer.peek() {
-                println!("{:?}", tok);
                 if tok == &Token::Semicolon {
                     self.lexer.next().unwrap();
                 } else {
@@ -122,7 +120,6 @@ impl Parser<'_> {
                 &Token::Fn => {
                     self.lexer.next().unwrap();
                     if let Some(Token::Ident(name)) = self.lexer.next() {
-                        println!("{}", name);
                         expect!(self.lexer.next(), "'('", Token::OpenParen);
                         expect!(self.lexer.next(), "')'", Token::CloseParen);
                         program.push(Stat::Fn(name, Vec::new(), self.expr()));
