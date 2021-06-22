@@ -24,7 +24,7 @@ fn parse_float(lex: &mut Lexer<Token>) -> Option<f64> {
     Some(f)
 }
 
-fn parse_radix_number(lex: &mut Lexer<Token>) -> Option<u64> {
+fn parse_radix_number(lex: &mut Lexer<Token>) -> Option<i64> {
     let slice = lex.slice();
     let radix_char = slice.bytes().nth(1)? as char;
     let radix = char_to_radix(radix_char);
@@ -34,13 +34,13 @@ fn parse_radix_number(lex: &mut Lexer<Token>) -> Option<u64> {
         radix_char,
         slice
     );
-    let n: u64 = u64::from_str_radix(&slice[2..], radix.unwrap() as u32).ok()?;
+    let n: i64 = i64::from_str_radix(&slice[2..], radix.unwrap() as u32).ok()?;
     Some(n)
 }
 
-fn parse_number(lex: &mut Lexer<Token>) -> Option<u64> {
+fn parse_number(lex: &mut Lexer<Token>) -> Option<i64> {
     let slice = lex.slice();
-    let n: u64 = slice.parse().ok()?;
+    let n: i64 = slice.parse().ok()?;
     Some(n)
 }
 
@@ -52,36 +52,39 @@ pub enum Token {
     #[token("export")]
     Export,
 
+    #[token("return")]
+    Return,
+
     #[token("fn")]
     Fn,
 
-    #[token("=")]
+    #[token("=", priority = 3)]
     Equals,
 
-    #[token("(")]
+    #[token("(", priority = 3)]
     OpenParen,
 
     #[token(")")]
     CloseParen,
 
-    #[token("{")]
+    #[token("{", priority = 3)]
     OpenBrace,
 
-    #[token("}")]
+    #[token("}", priority = 3)]
     CloseBrace,
 
-    #[token(";")]
+    #[token(";", priority = 3)]
     Semicolon,
 
-    #[regex(r"\-?\d*\.\d+", parse_float, priority = 3)]
+    #[regex(r"\-?\d*\.\d+", parse_float, priority = 4)]
     Float(f64),
 
-    #[regex(r"\-?0\D+", parse_radix_number, priority = 2)]
-    #[regex(r"\-?\d+", parse_number, priority = 2)]
-    Integer(u64),
+    #[regex(r"\-?0\D\S+", parse_radix_number, priority = 3)]
+    #[regex(r"\-?\d+", parse_number, priority = 3)]
+    Integer(i64),
 
-    #[regex(r"\S+")]
-    Ident,
+    #[regex(r"[^\r\n\t\f\v ();]+", |lex| lex.slice().to_owned(), priority = 2)]
+    Ident(String),
 
     #[error]
     #[regex(r"\s+", logos::skip)]
