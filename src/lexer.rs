@@ -161,11 +161,10 @@ pub enum Token {
     #[regex(r"\-?\d+", parse_number, priority = 3)]
     Integer(i64),
 
-    // TODO: figure out some way to become catch-all
-    #[regex(r"[_A-Za-z][0-9_A-Za-z]+", |lex| lex.slice().to_owned(), priority = 2)]
-    Ident(String),
-
     #[error]
-    #[regex(r"\s+", logos::skip)]
+    #[regex(r"\s+", logos::skip, priority = 2)]
     Error,
+
+    #[regex(r"[^\s=(){}\[\];^|&<>+\-*/]+", |lex| lex.slice().to_owned(), priority = 1)]
+    Ident(String),
 }
