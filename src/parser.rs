@@ -229,7 +229,7 @@ impl Parser<'_> {
                     self.skip();
                     expect!(self.next(), "'['", Token::OpenBracket);
                     if let Some(Token::Integer(pos)) = self.next() {
-                        assert!(pos > -1, "`data` position may not be negative");
+                        assert!(pos >= 0, "`data` position may not be negative");
                         expect!(self.next(), "']'", Token::CloseBracket);
                         expect!(self.next(), "'='", Token::Equals);
                         if let Some(Token::String(data)) = self.next() {
