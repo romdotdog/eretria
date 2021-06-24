@@ -151,6 +151,9 @@ pub enum Token {
     #[token(";", priority = 3)]
     Semicolon,
 
+    #[regex(r"\^|\||&|==|!=|>=|<=|>>|<<|>|<|\+|-|\*\*|/|\*", |lex| lex.slice().to_owned(), priority = 4)]
+    Op(String),
+
     #[regex(r"\-?\d*\.\d+", parse_float, priority = 4)]
     Float(f64),
 

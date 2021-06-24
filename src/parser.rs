@@ -1,12 +1,13 @@
 use std::iter::Peekable;
 
-use crate::lexer::Token;
+use crate::{lexer::Token, operators};
 use logos::Lexer;
 
 pub enum Expr {
     Paren(Box<Expr>),
     Block(Vec<Box<Expr>>),
     Assignment(String, Box<Expr>),
+    BinOp(Box<Expr>, String, Box<Expr>),
     Ident(String),
     Integer(i64),
     Float(f64),
@@ -58,7 +59,7 @@ impl Parser<'_> {
         }
     }
 
-    fn expr(&mut self) -> Box<Expr> {
+    fn primaryexpr(&mut self) -> Box<Expr> {
         if let Some(p) = self.lexer.peek() {
             match p {
                 &Token::Ident(..) => {
@@ -88,6 +89,52 @@ impl Parser<'_> {
         panic!("expected expression, found nothing")
     }
 
+    fn subexpr(&mut self, mut lhs: Box<Expr>, min_prec: u8) -> Box<Expr> {
+        let mut peek = self.lexer.peek();
+        loop {
+            if let Some(Token::Op(op)) = peek {
+                let op_prec = operators::precedence(op)
+                    .unwrap_or_else(|| panic!("foreign operator {} found", op));
+
+                if op_prec >= min_prec {
+                    // op is borrowed, owned_op is not
+                    let owned_op = match self.lexer.next() {
+                        Some(Token::Op(o)) => o,
+                        _ => unreachable!(),
+                    };
+
+                    let mut rhs = self.primaryexpr();
+
+                    peek = self.lexer.peek();
+                    loop {
+                        if let Some(Token::Op(next_op)) = peek {
+                            let next_op_prec = operators::precedence(next_op)
+                                .unwrap_or_else(|| panic!("foreign operator {} found", next_op));
+
+                            if next_op_prec > op_prec {
+                                rhs = self.subexpr(rhs, min_prec + 1);
+                                peek = self.lexer.peek();
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+
+                    lhs = Box::new(Expr::BinOp(lhs, owned_op, rhs));
+
+                    continue;
+                }
+            }
+            break;
+        }
+        return lhs;
+    }
+
+    fn expr(&mut self) -> Box<Expr> {
+        let lhs = self.primaryexpr();
+        self.subexpr(lhs, 0)
+    }
+
     fn block(&mut self) -> Vec<Box<Expr>> {
         let mut block = Vec::new();
         while self.lexer.peek().is_some() {
@@ -103,7 +150,7 @@ impl Parser<'_> {
             }
         }
         let next = self.lexer.next();
-        assert!(next.is_some(), "expected '}}', found <eof>.");
+        assert!(next.is_some(), "expected '{}', found <eof>.", "}");
 
         assert_eq!(
             next.unwrap(),

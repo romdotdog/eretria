@@ -1,4 +1,5 @@
 mod lexer;
+mod operators;
 mod parser;
 
 use lexer::Token;
