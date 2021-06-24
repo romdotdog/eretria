@@ -5,7 +5,7 @@ use logos::Lexer;
 
 pub enum Expr {
     Paren(Box<Expr>),
-    Block(Vec<Box<Expr>>),
+    Block(Vec<Expr>),
     Assignment(String, Box<Expr>),
     BinOp(Box<Expr>, String, Box<Expr>),
     Ident(String),
@@ -15,7 +15,7 @@ pub enum Expr {
 }
 
 pub enum Stat {
-    Fn(String, Vec<Box<Expr>>, Box<Expr>),
+    Fn(String, Vec<Expr>, Expr),
     Data(u64, String),
 }
 
@@ -44,22 +44,22 @@ impl Parser<'_> {
         }
     }
 
-    fn prefixexpr(&mut self) -> Box<Expr> {
+    fn prefixexpr(&mut self) -> Expr {
         let t = self.lexer.next().expect("expected prefixexpr, got <eof>");
         match t {
             Token::OpenParen => {
-                let expr = Expr::Paren { 0: self.expr() };
+                let expr = Expr::Paren(Box::new(self.expr()));
                 expect!(self.lexer.next(), "')'", Token::CloseParen);
-                Box::new(expr)
+                expr
             }
-            Token::Ident(s) => Box::new(Expr::Ident(s)),
-            Token::Float(f) => Box::new(Expr::Float(f)),
-            Token::Integer(i) => Box::new(Expr::Integer(i)),
+            Token::Ident(s) => (Expr::Ident(s)),
+            Token::Float(f) => (Expr::Float(f)),
+            Token::Integer(i) => (Expr::Integer(i)),
             _ => panic!("expected parentheses or literal in prefixexpr, got {:?}", t),
         }
     }
 
-    fn primaryexpr(&mut self) -> Box<Expr> {
+    fn primaryexpr(&mut self) -> Expr {
         if let Some(p) = self.lexer.peek() {
             match p {
                 &Token::Ident(..) => {
@@ -67,21 +67,21 @@ impl Parser<'_> {
                         if let Some(p1) = self.lexer.peek() {
                             if p1 == &Token::Equals {
                                 self.lexer.next().unwrap();
-                                return Box::new(Expr::Assignment(s, self.expr()));
+                                return Expr::Assignment(s, Box::new(self.expr()));
                             }
                         }
-                        return Box::new(Expr::Ident(s));
+                        return Expr::Ident(s);
                     } else {
                         unreachable!()
                     }
                 }
                 &Token::Return => {
                     self.lexer.next().unwrap();
-                    return Box::new(Expr::Return);
+                    return Expr::Return;
                 }
                 &Token::OpenBrace => {
                     self.lexer.next().unwrap();
-                    return Box::new(Expr::Block(self.block()));
+                    return Expr::Block(self.block());
                 }
                 _ => return self.prefixexpr(),
             }
@@ -89,7 +89,7 @@ impl Parser<'_> {
         panic!("expected expression, found nothing")
     }
 
-    fn subexpr(&mut self, mut lhs: Box<Expr>, min_prec: u8) -> Box<Expr> {
+    fn subexpr(&mut self, mut lhs: Expr, min_prec: u8) -> Expr {
         let mut peek = self.lexer.peek();
         loop {
             if let Some(Token::Op(op)) = peek {
@@ -120,7 +120,7 @@ impl Parser<'_> {
                         break;
                     }
 
-                    lhs = Box::new(Expr::BinOp(lhs, owned_op, rhs));
+                    lhs = Expr::BinOp(Box::new(lhs), owned_op, Box::new(rhs));
 
                     continue;
                 }
@@ -130,12 +130,12 @@ impl Parser<'_> {
         return lhs;
     }
 
-    fn expr(&mut self) -> Box<Expr> {
+    fn expr(&mut self) -> Expr {
         let lhs = self.primaryexpr();
         self.subexpr(lhs, 0)
     }
 
-    fn block(&mut self) -> Vec<Box<Expr>> {
+    fn block(&mut self) -> Vec<Expr> {
         let mut block = Vec::new();
         while self.lexer.peek().is_some() {
             block.push(self.expr());
