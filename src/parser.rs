@@ -8,6 +8,7 @@ pub enum Expr {
     Block(Vec<Expr>),
     Assignment(String, Box<Expr>),
     BinOp(Box<Expr>, String, Box<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     Ident(String),
     Integer(i64),
     Float(f64),
@@ -75,7 +76,7 @@ impl Parser<'_> {
     }
 
     fn primaryexpr(&mut self) -> Expr {
-        match self.peek() {
+        let mut base = match self.peek() {
             Some(&Token::Ident(..)) => {
                 if let Some(Token::Ident(s)) = self.next() {
                     match self.peek() {
@@ -99,7 +100,42 @@ impl Parser<'_> {
             }
             Some(..) => self.prefixexpr(),
             None => panic!("expected expression, found nothing"),
+        };
+
+        // arglist
+        while let Some(Token::OpenParen) = self.peek() {
+            self.skip();
+            let mut arglist = Vec::new();
+
+            loop {
+                match self.peek() {
+                    Some(&Token::CloseParen) => {
+                        self.skip();
+                        break;
+                    }
+                    Some(..) => {
+                        arglist.push(self.expr());
+                        match self.peek() {
+                            Some(&Token::CloseParen) => {
+                                self.skip();
+                                break;
+                            }
+                            Some(&Token::Comma) => {
+                                self.skip();
+                                continue;
+                            }
+                            Some(t) => panic!("expected ')' or ',', got {:?}", t),
+                            None => panic!("expected ')' or ',', got <eof>"),
+                        }
+                    }
+                    None => panic!("incomplete argument list, closing parenthesis not found"),
+                }
+            }
+
+            base = Expr::Call(Box::new(base), arglist)
         }
+
+        base
     }
 
     fn subexpr(&mut self, mut lhs: Expr, min_prec: u8) -> Expr {

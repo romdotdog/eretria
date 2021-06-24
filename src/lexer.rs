@@ -151,6 +151,9 @@ pub enum Token {
     #[token(";", priority = 3)]
     Semicolon,
 
+    #[token(",", priority = 3)]
+    Comma,
+
     #[regex(r"\^|\||&|==|!=|>=|<=|>>|<<|>|<|\+|-|\*\*|/|\*", |lex| lex.slice().to_owned(), priority = 4)]
     Op(String),
 
@@ -165,6 +168,6 @@ pub enum Token {
     #[regex(r"\s+", logos::skip, priority = 2)]
     Error,
 
-    #[regex(r"[^\s=(){}\[\];^|&<>+\-*/]+", |lex| lex.slice().to_owned(), priority = 1)]
+    #[regex(r"[^\s=(){}\[\];^|&<>+\-*/,]+", |lex| lex.slice().to_owned(), priority = 1)]
     Ident(String),
 }

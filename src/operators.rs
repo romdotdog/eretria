@@ -8,6 +8,7 @@ pub fn precedence(op: &str) -> Option<u8> {
         ">>" | "<<" => Some(5),
         "+" | "-" => Some(6),
         "*" | "/" => Some(7),
+        "**" => Some(8),
         _ => None,
     }
 }
