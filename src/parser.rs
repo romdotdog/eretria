@@ -11,7 +11,7 @@ pub enum Expr {
     Ident(String),
     Integer(i64),
     Float(f64),
-    Return,
+    Return(Box<Expr>),
 }
 
 pub enum Stat {
@@ -77,7 +77,7 @@ impl Parser<'_> {
                 }
                 &Token::Return => {
                     self.lexer.next().unwrap();
-                    return Expr::Return;
+                    return Expr::Return(Box::new(self.expr()));
                 }
                 &Token::OpenBrace => {
                     self.lexer.next().unwrap();
