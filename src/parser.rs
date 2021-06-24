@@ -192,5 +192,10 @@ impl Parser<'_> {
                 _ => {}
             }
         }
+
+        match self.lexer.next() {
+            Some(t) => panic!("expected <eof>, got {:?}", t),
+            None => {}
+        }
     }
 }
