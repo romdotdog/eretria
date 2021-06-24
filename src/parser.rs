@@ -44,11 +44,26 @@ impl Parser<'_> {
         }
     }
 
+    #[inline]
+    fn peek(&mut self) -> Option<&Token> {
+        self.lexer.peek()
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<Token> {
+        self.lexer.next()
+    }
+
+    #[inline]
+    fn skip(&mut self) {
+        self.lexer.next().unwrap();
+    }
+
     fn prefixexpr(&mut self) -> Expr {
-        match self.lexer.next() {
+        match self.next() {
             Some(Token::OpenParen) => {
                 let expr = Expr::Paren(Box::new(self.expr()));
-                expect!(self.lexer.next(), "')'", Token::CloseParen);
+                expect!(self.next(), "')'", Token::CloseParen);
                 expr
             }
             Some(Token::Ident(s)) => (Expr::Ident(s)),
@@ -60,35 +75,35 @@ impl Parser<'_> {
     }
 
     fn primaryexpr(&mut self) -> Expr {
-        match self.lexer.peek() {
+        match self.peek() {
             Some(&Token::Ident(..)) => {
-                if let Some(Token::Ident(s)) = self.lexer.next() {
-                    if let Some(p1) = self.lexer.peek() {
-                        if p1 == &Token::Equals {
-                            self.lexer.next().unwrap();
-                            return Expr::Assignment(s, Box::new(self.expr()));
+                if let Some(Token::Ident(s)) = self.next() {
+                    match self.peek() {
+                        Some(&Token::Equals) => {
+                            self.skip();
+                            Expr::Assignment(s, Box::new(self.expr()))
                         }
+                        _ => Expr::Ident(s),
                     }
-                    return Expr::Ident(s);
                 } else {
                     unreachable!()
                 }
             }
             Some(&Token::Return) => {
-                self.lexer.next().unwrap();
-                return Expr::Return(Box::new(self.expr()));
+                self.skip();
+                Expr::Return(Box::new(self.expr()))
             }
             Some(&Token::OpenBrace) => {
-                self.lexer.next().unwrap();
-                return Expr::Block(self.block());
+                self.skip();
+                Expr::Block(self.block())
             }
-            Some(..) => return self.prefixexpr(),
+            Some(..) => self.prefixexpr(),
             None => panic!("expected expression, found nothing"),
         }
     }
 
     fn subexpr(&mut self, mut lhs: Expr, min_prec: u8) -> Expr {
-        let mut peek = self.lexer.peek();
+        let mut peek = self.peek();
         loop {
             if let Some(Token::Op(op)) = peek {
                 let op_prec = operators::precedence(op)
@@ -96,14 +111,14 @@ impl Parser<'_> {
 
                 if op_prec >= min_prec {
                     // op is borrowed, owned_op is not
-                    let owned_op = match self.lexer.next() {
+                    let owned_op = match self.next() {
                         Some(Token::Op(o)) => o,
                         _ => unreachable!(),
                     };
 
                     let mut rhs = self.primaryexpr();
 
-                    peek = self.lexer.peek();
+                    peek = self.peek();
                     loop {
                         if let Some(Token::Op(next_op)) = peek {
                             let next_op_prec = operators::precedence(next_op)
@@ -111,7 +126,7 @@ impl Parser<'_> {
 
                             if next_op_prec > op_prec {
                                 rhs = self.subexpr(rhs, min_prec + 1);
-                                peek = self.lexer.peek();
+                                peek = self.peek();
                                 continue;
                             }
                         }
@@ -119,7 +134,6 @@ impl Parser<'_> {
                     }
 
                     lhs = Expr::BinOp(Box::new(lhs), owned_op, Box::new(rhs));
-
                     continue;
                 }
             }
@@ -135,11 +149,11 @@ impl Parser<'_> {
 
     fn block(&mut self) -> Vec<Expr> {
         let mut block = Vec::new();
-        while self.lexer.peek().is_some() {
+        while self.peek().is_some() {
             block.push(self.expr());
-            match self.lexer.peek() {
+            match self.peek() {
                 Some(&Token::Semicolon) => {
-                    self.lexer.next().unwrap();
+                    self.skip();
                 }
                 Some(..) => break,
                 None => break,
@@ -147,7 +161,7 @@ impl Parser<'_> {
         }
 
         // expect close brace
-        match self.lexer.next() {
+        match self.next() {
             Some(Token::CloseBrace) => {}
             Some(t) => panic!(
                 "expected '{}', found {:?} (are you missing a semicolon?)",
@@ -161,14 +175,14 @@ impl Parser<'_> {
 
     pub fn parse(&mut self) -> () {
         let mut program = Vec::new();
-        while let Some(tok) = self.lexer.peek() {
+        while let Some(tok) = self.peek() {
             match tok {
                 &Token::Fn => {
-                    self.lexer.next().unwrap();
-                    match self.lexer.next() {
+                    self.skip();
+                    match self.next() {
                         Some(Token::Ident(name)) => {
-                            expect!(self.lexer.next(), "'('", Token::OpenParen);
-                            expect!(self.lexer.next(), "')'", Token::CloseParen);
+                            expect!(self.next(), "'('", Token::OpenParen);
+                            expect!(self.next(), "')'", Token::CloseParen);
                             program.push(Stat::Fn(name, Vec::new(), self.expr()));
                         }
                         Some(t) => panic!("expected function name, got {:?}", t),
@@ -176,13 +190,13 @@ impl Parser<'_> {
                     }
                 }
                 &Token::Data => {
-                    self.lexer.next().unwrap();
-                    expect!(self.lexer.next(), "'['", Token::OpenBracket);
-                    if let Some(Token::Integer(pos)) = self.lexer.next() {
+                    self.skip();
+                    expect!(self.next(), "'['", Token::OpenBracket);
+                    if let Some(Token::Integer(pos)) = self.next() {
                         assert!(pos > -1, "`data` position may not be negative");
-                        expect!(self.lexer.next(), "']'", Token::CloseBracket);
-                        expect!(self.lexer.next(), "'='", Token::Equals);
-                        if let Some(Token::String(data)) = self.lexer.next() {
+                        expect!(self.next(), "']'", Token::CloseBracket);
+                        expect!(self.next(), "'='", Token::Equals);
+                        if let Some(Token::String(data)) = self.next() {
                             program.push(Stat::Data(pos as u64, data));
                         }
                     } else {
@@ -193,7 +207,7 @@ impl Parser<'_> {
             }
         }
 
-        match self.lexer.next() {
+        match self.next() {
             Some(t) => panic!("expected <eof>, got {:?}", t),
             None => {}
         }
