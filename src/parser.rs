@@ -191,8 +191,7 @@ impl Parser<'_> {
                 Some(&Token::Semicolon) => {
                     self.skip();
                 }
-                Some(..) => break,
-                None => break,
+                _ => break,
             }
         }
 
