@@ -121,10 +121,9 @@ impl<'a> Parser<'a> {
                 expect!(self.next(), "')'", Token::CloseParen);
                 Ok(expr)
             }
-            Some(Token::Ident(s)) => Ok(Expr::Ident(s)),
             Some(Token::Float(f)) => Ok(Expr::Float(f)),
             Some(Token::Integer(i)) => Ok(Expr::Integer(i)),
-            Some(t) => error!(self.pos(), "parentheses or literal in prefixexpr", t),
+            Some(t) => error!(self.pos(), "parentheses, integer, or float", t),
             None => error!(self.pos(), "prefixexpr", "<eof>"),
         }
     }
