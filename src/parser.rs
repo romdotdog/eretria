@@ -7,6 +7,10 @@ use std::fmt;
 pub struct ParseError(String);
 
 impl ParseError {
+    pub fn format_line(pos: (usize, usize), msg: &dyn AsRef<str>) -> ParseError {
+        ParseError(format!("{}:{}: {}", pos.0, pos.1, msg.as_ref()))
+    }
+
     pub fn new<E, G>(pos: (usize, usize), e: E, g: G) -> ParseError
     where
         E: fmt::Debug,
@@ -22,6 +26,9 @@ impl ParseError {
 macro_rules! error {
     ($pos: expr, $e: expr, $g: expr) => {
         Err(ParseError::new($pos, $e, $g))
+    };
+    ($pos: expr, $msg: expr) => {
+        Err(ParseError::format_line($pos, $msg))
     };
 }
 
@@ -159,6 +166,9 @@ impl<'a> Parser<'a> {
                     }
                     Some(..) => {
                         arglist.push(self.expr()?);
+
+                        // TODO: put `pos` inside appropriate match arms
+                        let pos = self.pos();
                         match self.peek() {
                             Some(&Token::CloseParen) => {
                                 self.skip();
@@ -168,11 +178,18 @@ impl<'a> Parser<'a> {
                                 self.skip();
                                 continue;
                             }
-                            Some(t) => panic!("expected ')' or ',', got {:?}", t),
-                            None => panic!("expected ')' or ',', got <eof>"),
+                            Some(t) => {
+                                return error!(pos, "')' or ','", t);
+                            }
+                            None => return error!(pos, "')' or ','", "<eof>"),
                         }
                     }
-                    None => panic!("incomplete argument list, closing parenthesis not found"),
+                    None => {
+                        return error!(
+                            self.pos(),
+                            &"incomplete argument list, closing parenthesis not found"
+                        )
+                    }
                 }
             }
 
@@ -238,15 +255,12 @@ impl<'a> Parser<'a> {
 
         // expect close brace
         match self.next() {
-            Some(Token::CloseBrace) => {}
-            Some(t) => panic!(
-                "expected '{}', found {:?} (are you missing a semicolon?)",
-                '}', t
-            ),
-            None => panic!("expected '{}', found <eof>", '}'),
-        };
+            Some(Token::CloseBrace) => Ok(block),
 
-        Ok(block)
+            // TODO: add back semicolon error message
+            Some(t) => error!(self.pos(), "'}'", t),
+            None => error!(self.pos(), "'}'", "<eof>"),
+        }
     }
 
     pub fn parse(&mut self) -> Result<Root> {
@@ -261,8 +275,8 @@ impl<'a> Parser<'a> {
                             expect!(self.next(), "')'", Token::CloseParen);
                             program.push(Stat::Fn(name, Vec::new(), self.expr()?));
                         }
-                        Some(t) => panic!("expected function name, got {:?}", t),
-                        None => panic!("expected function name, got <eof>"),
+                        Some(t) => return error!(self.pos(), "function name", t),
+                        None => return error!(self.pos(), "function name", "<eof>"),
                     }
                 }
                 &Token::Data => {
@@ -276,7 +290,7 @@ impl<'a> Parser<'a> {
                             program.push(Stat::Data(pos as u64, data));
                         }
                     } else {
-                        panic!("expected integer, e.g. data[<int>]")
+                        return error!(self.pos(), &"expected integer, e.g. data[<int>]");
                     }
                 }
                 _ => {}
@@ -284,7 +298,7 @@ impl<'a> Parser<'a> {
         }
 
         match self.next() {
-            Some(t) => panic!("expected <eof>, got {:?}", t),
+            Some(t) => error!(self.pos(), "<eof>", t),
             None => Ok(program),
         }
     }
