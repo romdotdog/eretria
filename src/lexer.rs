@@ -168,6 +168,7 @@ pub enum Token {
     #[regex(r"\s+", logos::skip, priority = 2)]
     Error,
 
-    #[regex(r"[^\s=(){}\[\];^|&<>+\-*/,]+", |lex| lex.slice().to_owned(), priority = 1)]
+    // TODO: figure out catch-all system
+    #[regex(r#"[^\s=(){}\[\];^|&<>+\-*/,"]+"#, |lex| lex.slice().to_owned(), priority = 1)]
     Ident(String),
 }
