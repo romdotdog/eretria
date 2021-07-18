@@ -178,9 +178,7 @@ impl<'a> Parser<'a> {
                                 self.skip();
                                 continue;
                             }
-                            Some(t) => {
-                                return error!(pos, "')' or ','", t);
-                            }
+                            Some(t) => return error!(pos, "')' or ','", t),
                             None => return error!(pos, "')' or ','", "<eof>"),
                         }
                     }
