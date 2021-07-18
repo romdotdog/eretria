@@ -77,17 +77,17 @@ impl Parser<'_> {
 
     fn primaryexpr(&mut self) -> Expr {
         let mut base = match self.peek() {
-            Some(&Token::Ident(..)) => {
-                if let Some(Token::Ident(s)) = self.next() {
-                    match self.peek() {
-                        Some(&Token::Equals) => {
-                            self.skip();
-                            Expr::Assignment(s, Box::new(self.expr()))
-                        }
-                        _ => Expr::Ident(s),
+            Some(Token::Ident(s)) => {
+                // TODO: possibility to remove to_owned here
+                let owned = s.to_owned();
+                self.skip();
+
+                match self.peek() {
+                    Some(&Token::Equals) => {
+                        self.skip();
+                        Expr::Assignment(owned, Box::new(self.expr()))
                     }
-                } else {
-                    unreachable!()
+                    _ => Expr::Ident(owned),
                 }
             }
             Some(&Token::Return) => {
@@ -146,12 +146,8 @@ impl Parser<'_> {
                     .unwrap_or_else(|| panic!("foreign operator {} found", op));
 
                 if op_prec >= min_prec {
-                    // op is borrowed, owned_op is not
-                    let owned_op = match self.next() {
-                        Some(Token::Op(o)) => o,
-                        _ => unreachable!(),
-                    };
-
+                    // TODO: possibility to remove to_owned here
+                    let owned_op = op.to_owned();
                     let mut rhs = self.primaryexpr();
 
                     peek = self.peek();
