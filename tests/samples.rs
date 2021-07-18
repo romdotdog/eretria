@@ -11,6 +11,6 @@ fn test_samples() {
             "parsing {:?}",
             path.file_name().expect("no file name found")
         );
-        parse_file(path).unwrap();
+        parse_file(path).unwrap().unwrap();
     }
 }

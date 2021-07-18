@@ -4,21 +4,34 @@ use logos::{Lexer, Logos};
 use std::fmt;
 
 #[derive(Debug, Clone)]
-struct ParseError<E, G>((usize, usize), E, G);
+pub struct ParseError(String);
 
-impl<E, G> fmt::Display for ParseError<E, G>
-where
-    E: fmt::Display,
-    G: fmt::Display,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}:{}: expected {}, got {}",
-            self.0 .0, self.0 .1, self.1, self.2
-        )
+impl ParseError {
+    pub fn new<E, G>(pos: (usize, usize), e: E, g: G) -> ParseError
+    where
+        E: fmt::Debug,
+        G: fmt::Debug,
+    {
+        ParseError(format!(
+            "{}:{}: expected {:?}, got {:?}",
+            pos.0, pos.1, e, g
+        ))
     }
 }
+
+macro_rules! error {
+    ($pos: expr, $e: expr, $g: expr) => {
+        Err(ParseError::new($pos, $e, $g))
+    };
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub type Result<T> = std::result::Result<T, ParseError>;
 
 pub enum Expr {
     Paren(Box<Expr>),
@@ -36,6 +49,8 @@ pub enum Stat {
     Fn(String, Vec<Expr>, Expr),
     Data(u64, String),
 }
+
+pub type Root = Vec<Stat>;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a, Token>,
@@ -66,7 +81,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn get_position(&self) -> (usize, usize) {
+    fn pos(&self) -> (usize, usize) {
         self.linecol.get(self.lexer.span().end)
     }
 
@@ -89,22 +104,22 @@ impl<'a> Parser<'a> {
         self.next().unwrap();
     }
 
-    fn prefixexpr(&mut self) -> Expr {
+    fn prefixexpr(&mut self) -> Result<Expr> {
         match self.next() {
             Some(Token::OpenParen) => {
-                let expr = Expr::Paren(Box::new(self.expr()));
+                let expr = Expr::Paren(Box::new(self.expr()?));
                 expect!(self.next(), "')'", Token::CloseParen);
-                expr
+                Ok(expr)
             }
-            Some(Token::Ident(s)) => (Expr::Ident(s)),
-            Some(Token::Float(f)) => (Expr::Float(f)),
-            Some(Token::Integer(i)) => (Expr::Integer(i)),
-            Some(t) => panic!("expected parentheses or literal in prefixexpr, got {:?}", t),
-            None => panic!("expected prefixexpr, got <eof>"),
+            Some(Token::Ident(s)) => Ok(Expr::Ident(s)),
+            Some(Token::Float(f)) => Ok(Expr::Float(f)),
+            Some(Token::Integer(i)) => Ok(Expr::Integer(i)),
+            Some(t) => error!(self.pos(), "parentheses or literal in prefixexpr", t),
+            None => error!(self.pos(), "prefixexpr", "<eof>"),
         }
     }
 
-    fn primaryexpr(&mut self) -> Expr {
+    fn primaryexpr(&mut self) -> Result<Expr> {
         let mut base = match self.peek() {
             Some(Token::Ident(s)) => {
                 // TODO: possibility to remove to_owned here
@@ -114,21 +129,21 @@ impl<'a> Parser<'a> {
                 match self.peek() {
                     Some(&Token::Equals) => {
                         self.skip();
-                        Expr::Assignment(owned, Box::new(self.expr()))
+                        Expr::Assignment(owned, Box::new(self.expr()?))
                     }
                     _ => Expr::Ident(owned),
                 }
             }
             Some(&Token::Return) => {
                 self.skip();
-                Expr::Return(Box::new(self.expr()))
+                Expr::Return(Box::new(self.expr()?))
             }
             Some(&Token::OpenBrace) => {
                 self.skip();
-                Expr::Block(self.block())
+                Expr::Block(self.block()?)
             }
-            Some(..) => self.prefixexpr(),
-            None => panic!("expected expression, found nothing"),
+            Some(..) => self.prefixexpr()?,
+            None => return error!(self.pos(), "expression", "<eof>"),
         };
 
         // arglist
@@ -143,7 +158,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
                     Some(..) => {
-                        arglist.push(self.expr());
+                        arglist.push(self.expr()?);
                         match self.peek() {
                             Some(&Token::CloseParen) => {
                                 self.skip();
@@ -164,10 +179,10 @@ impl<'a> Parser<'a> {
             base = Expr::Call(Box::new(base), arglist)
         }
 
-        base
+        Ok(base)
     }
 
-    fn subexpr(&mut self, mut lhs: Expr, min_prec: u8) -> Expr {
+    fn subexpr(&mut self, mut lhs: Expr, min_prec: u8) -> Result<Expr> {
         let mut peek = self.peek();
         loop {
             if let Some(Token::Op(op)) = peek {
@@ -178,7 +193,7 @@ impl<'a> Parser<'a> {
                     // TODO: possibility to remove to_owned here
                     let owned_op = op.to_owned();
                     self.skip();
-                    let mut rhs = self.primaryexpr();
+                    let mut rhs = self.primaryexpr()?;
 
                     peek = self.peek();
                     loop {
@@ -187,7 +202,7 @@ impl<'a> Parser<'a> {
                                 .unwrap_or_else(|| panic!("foreign operator {} found", next_op));
 
                             if next_op_prec > op_prec {
-                                rhs = self.subexpr(rhs, min_prec + 1);
+                                rhs = self.subexpr(rhs, min_prec + 1)?;
                                 peek = self.peek();
                                 continue;
                             }
@@ -201,18 +216,18 @@ impl<'a> Parser<'a> {
             }
             break;
         }
-        return lhs;
+        Ok(lhs)
     }
 
-    fn expr(&mut self) -> Expr {
-        let lhs = self.primaryexpr();
+    fn expr(&mut self) -> Result<Expr> {
+        let lhs = self.primaryexpr()?;
         self.subexpr(lhs, 0)
     }
 
-    fn block(&mut self) -> Vec<Expr> {
+    fn block(&mut self) -> Result<Vec<Expr>> {
         let mut block = Vec::new();
         while self.peek().is_some() {
-            block.push(self.expr());
+            block.push(self.expr()?);
             match self.peek() {
                 Some(&Token::Semicolon) => {
                     self.skip();
@@ -231,10 +246,10 @@ impl<'a> Parser<'a> {
             None => panic!("expected '{}', found <eof>", '}'),
         };
 
-        block
+        Ok(block)
     }
 
-    pub fn parse(&mut self) -> () {
+    pub fn parse(&mut self) -> Result<Root> {
         let mut program = Vec::new();
         while let Some(tok) = self.peek() {
             match tok {
@@ -244,7 +259,7 @@ impl<'a> Parser<'a> {
                         Some(Token::Ident(name)) => {
                             expect!(self.next(), "'('", Token::OpenParen);
                             expect!(self.next(), "')'", Token::CloseParen);
-                            program.push(Stat::Fn(name, Vec::new(), self.expr()));
+                            program.push(Stat::Fn(name, Vec::new(), self.expr()?));
                         }
                         Some(t) => panic!("expected function name, got {:?}", t),
                         None => panic!("expected function name, got <eof>"),
@@ -270,7 +285,7 @@ impl<'a> Parser<'a> {
 
         match self.next() {
             Some(t) => panic!("expected <eof>, got {:?}", t),
-            None => {}
+            None => Ok(program),
         }
     }
 }

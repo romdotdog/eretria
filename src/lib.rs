@@ -10,12 +10,12 @@ use std::{
 
 use parser::Parser;
 
-pub fn parse_string(s: &dyn AsRef<str>) {
+pub fn parse_string(s: &dyn AsRef<str>) -> parser::Result<parser::Root> {
     let mut parser = Parser::new(s);
-    parser.parse();
+    parser.parse()
 }
 
-pub fn parse_file<T>(input: T) -> io::Result<()>
+pub fn parse_file<T>(input: T) -> io::Result<parser::Result<parser::Root>>
 where
     T: AsRef<Path>,
 {

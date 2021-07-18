@@ -18,6 +18,6 @@ fn main() -> io::Result<()> {
         .get_matches();
 
     let input = matches.value_of("INPUT").expect("expected an input file");
-    parse_file(input)?;
+    parse_file(input)?.unwrap();
     Ok(())
 }
