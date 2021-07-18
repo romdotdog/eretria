@@ -16,6 +16,11 @@ fn call() {
 }
 
 #[test]
+fn call_with_args() {
+    assert!(parse_string("fn main() main(1, 2 * 5, 100 * 2 >= 1)").is_ok());
+}
+
+#[test]
 
 fn _return() {
     assert!(parse_string("fn main() return 100").is_ok());
