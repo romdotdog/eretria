@@ -1,5 +1,3 @@
-use std::{iter::Peekable, usize};
-
 use crate::{lexer::Token, operators};
 use line_col::LineColLookup;
 use logos::{Lexer, Logos};
@@ -40,7 +38,8 @@ pub enum Stat {
 }
 
 pub struct Parser<'a> {
-    lexer: Peekable<Lexer<'a, Token>>,
+    lexer: Lexer<'a, Token>,
+    peeked: Option<Option<Token>>,
     linecol: LineColLookup<'a>,
 }
 
@@ -61,24 +60,33 @@ macro_rules! expect {
 impl<'a> Parser<'a> {
     pub fn new(source: &'a dyn AsRef<str>) -> Parser<'a> {
         Parser {
-            lexer: Token::lexer(source.as_ref()).peekable(),
+            lexer: Token::lexer(source.as_ref()),
             linecol: LineColLookup::new(source.as_ref()),
+            peeked: None,
         }
+    }
+
+    fn get_position(&self) -> (usize, usize) {
+        self.linecol.get(self.lexer.span().end)
     }
 
     #[inline]
     fn peek(&mut self) -> Option<&Token> {
-        self.lexer.peek()
+        let iter = &mut self.lexer;
+        self.peeked.get_or_insert_with(|| iter.next()).as_ref()
     }
 
     #[inline]
     fn next(&mut self) -> Option<Token> {
-        self.lexer.next()
+        match self.peeked.take() {
+            Some(v) => v,
+            None => self.lexer.next(),
+        }
     }
 
     #[inline]
     fn skip(&mut self) {
-        self.lexer.next().unwrap();
+        self.next().unwrap();
     }
 
     fn prefixexpr(&mut self) -> Expr {
