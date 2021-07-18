@@ -115,16 +115,16 @@ impl<'a> Parser<'a> {
     }
 
     fn prefixexpr(&mut self) -> Result<Expr> {
-        match self.next() {
-            Some(Token::OpenParen) => {
+        // we can unwrap here since `None` was checked in `primaryexpr`
+        match self.next().unwrap() {
+            Token::OpenParen => {
                 let expr = Expr::Paren(Box::new(self.expr()?));
                 expect!(self.next(), "')'", Token::CloseParen);
                 Ok(expr)
             }
-            Some(Token::Float(f)) => Ok(Expr::Float(f)),
-            Some(Token::Integer(i)) => Ok(Expr::Integer(i)),
-            Some(t) => error!(self.pos(), "parentheses, integer, or float", t),
-            None => error!(self.pos(), "prefixexpr", "<eof>"),
+            Token::Float(f) => Ok(Expr::Float(f)),
+            Token::Integer(i) => Ok(Expr::Integer(i)),
+            t => error!(self.pos(), "parentheses, integer, or float", t),
         }
     }
 
