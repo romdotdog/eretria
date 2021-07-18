@@ -167,8 +167,6 @@ impl<'a> Parser<'a> {
                     Some(..) => {
                         arglist.push(self.expr()?);
 
-                        // TODO: put `pos` inside appropriate match arms
-                        let pos = self.pos();
                         match self.peek() {
                             Some(&Token::CloseParen) => {
                                 self.skip();
@@ -178,8 +176,10 @@ impl<'a> Parser<'a> {
                                 self.skip();
                                 continue;
                             }
-                            Some(t) => return error!(pos, "')' or ','", t),
-                            None => return error!(pos, "')' or ','", "<eof>"),
+                            Some(..) => {
+                                return error!(self.pos(), "')' or ','", self.next().unwrap())
+                            }
+                            None => return error!(self.pos(), "')' or ','", "<eof>"),
                         }
                     }
                     None => {
@@ -291,7 +291,8 @@ impl<'a> Parser<'a> {
                         return error!(self.pos(), &"expected integer, e.g. data[<int>]");
                     }
                 }
-                _ => {}
+                &Token::Semicolon => self.skip(),
+                _ => return error!(self.pos(), "data, fn or ';'", self.next().unwrap()),
             }
         }
 
