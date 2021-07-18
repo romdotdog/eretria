@@ -148,6 +148,7 @@ impl Parser<'_> {
                 if op_prec >= min_prec {
                     // TODO: possibility to remove to_owned here
                     let owned_op = op.to_owned();
+                    self.skip();
                     let mut rhs = self.primaryexpr();
 
                     peek = self.peek();
