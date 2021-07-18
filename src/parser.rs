@@ -1,7 +1,26 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, usize};
 
 use crate::{lexer::Token, operators};
-use logos::Lexer;
+use line_col::LineColLookup;
+use logos::{Lexer, Logos};
+use std::fmt;
+
+#[derive(Debug, Clone)]
+struct ParseError<E, G>((usize, usize), E, G);
+
+impl<E, G> fmt::Display for ParseError<E, G>
+where
+    E: fmt::Display,
+    G: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}:{}: expected {}, got {}",
+            self.0 .0, self.0 .1, self.1, self.2
+        )
+    }
+}
 
 pub enum Expr {
     Paren(Box<Expr>),
@@ -22,6 +41,7 @@ pub enum Stat {
 
 pub struct Parser<'a> {
     lexer: Peekable<Lexer<'a, Token>>,
+    linecol: LineColLookup<'a>,
 }
 
 macro_rules! expect {
@@ -38,10 +58,11 @@ macro_rules! expect {
     };
 }
 
-impl Parser<'_> {
-    pub fn new(lexer: Lexer<Token>) -> Parser {
+impl<'a> Parser<'a> {
+    pub fn new(source: &'a dyn AsRef<str>) -> Parser<'a> {
         Parser {
-            lexer: lexer.peekable(),
+            lexer: Token::lexer(source.as_ref()).peekable(),
+            linecol: LineColLookup::new(source.as_ref()),
         }
     }
 

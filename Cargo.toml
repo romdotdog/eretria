@@ -17,3 +17,4 @@ path = "src/cli.rs"
 [dependencies]
 logos = "0.12"
 clap = "2.33"
+line-col = "0.2"

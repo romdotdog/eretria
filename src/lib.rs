@@ -8,13 +8,10 @@ use std::{
     path::Path,
 };
 
-use lexer::Token;
-use logos::Logos;
 use parser::Parser;
 
-pub fn parse_string<'source>(s: &dyn AsRef<str>) {
-    let lexer = Token::lexer(s.as_ref());
-    let mut parser = Parser::new(lexer);
+pub fn parse_string(s: &dyn AsRef<str>) {
+    let mut parser = Parser::new(s);
     parser.parse();
 }
 
