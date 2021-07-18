@@ -7,7 +7,10 @@ use std::fmt;
 pub struct ParseError(String);
 
 impl ParseError {
-    pub fn format_line(pos: (usize, usize), msg: &dyn AsRef<str>) -> ParseError {
+    pub fn format_line<T>(pos: (usize, usize), msg: T) -> ParseError
+    where
+        T: AsRef<str>,
+    {
         ParseError(format!("{}:{}: {}", pos.0, pos.1, msg.as_ref()))
     }
 
@@ -185,7 +188,7 @@ impl<'a> Parser<'a> {
                     None => {
                         return error!(
                             self.pos(),
-                            &"incomplete argument list, closing parenthesis not found"
+                            "incomplete argument list, closing parenthesis not found"
                         )
                     }
                 }
@@ -288,7 +291,7 @@ impl<'a> Parser<'a> {
                             program.push(Stat::Data(pos as u64, data));
                         }
                     } else {
-                        return error!(self.pos(), &"expected integer, e.g. data[<int>]");
+                        return error!(self.pos(), "expected integer, e.g. data[<int>]");
                     }
                 }
                 &Token::Semicolon => self.skip(),

@@ -10,8 +10,11 @@ use std::{
 
 use parser::Parser;
 
-pub fn parse_string(s: &dyn AsRef<str>) -> parser::Result<parser::Root> {
-    let mut parser = Parser::new(s);
+pub fn parse_string<T>(s: T) -> parser::Result<parser::Root>
+where
+    T: AsRef<str>,
+{
+    let mut parser = Parser::new(&s);
     parser.parse()
 }
 
