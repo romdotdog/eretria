@@ -29,3 +29,20 @@ fn ends_eof() {
 fn ends_next_function() {
     assert!(parse_string("fn main() {1 fn").is_err());
 }
+
+// calls
+
+#[test]
+fn one_expr() {
+    assert!(parse_string("fn main() main(1").is_err());
+}
+
+#[test]
+fn no_close_call() {
+    assert!(parse_string("fn main() main(").is_err());
+}
+
+#[test]
+fn no_comma() {
+    assert!(parse_string("fn main() main(1 1)").is_err());
+}

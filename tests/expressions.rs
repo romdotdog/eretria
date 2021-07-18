@@ -25,3 +25,8 @@ fn call_with_args() {
 fn _return() {
     assert!(parse_string("fn main() return 100").is_ok());
 }
+
+#[test]
+fn multi_block() {
+    assert!(parse_string("fn main() {a = 1; b = 2; c = 3}").is_ok());
+}
