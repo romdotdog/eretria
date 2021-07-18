@@ -1,4 +1,4 @@
-use eretria::{parse_file, parse_string};
+use eretria::parse_file;
 use std::io;
 
 extern crate clap;
@@ -19,5 +19,5 @@ fn main() -> io::Result<()> {
 
     let input = matches.value_of("INPUT").expect("expected an input file");
     parse_file(input)?;
-	Ok(())
+    Ok(())
 }
