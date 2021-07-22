@@ -29,6 +29,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6736e2428df2ca2848d846c43e88745121a6654696e349ce0054a420815a7409"
 
 [[package]]
+name = "binaryen"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
