@@ -1,3 +1,5 @@
+// TODO: Semantic validation
+
 use crate::{lexer::Token, operators};
 use line_col::LineColLookup;
 use logos::{Lexer, Logos};
@@ -62,7 +64,7 @@ pub enum Stat {
     Data(u64, String),
 }
 
-pub type Root = Vec<Stat>;
+pub type Program = Vec<Stat>;
 
 pub struct Parser<'a> {
     lexer: Lexer<'a, Token>,
@@ -265,7 +267,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Root> {
+    pub fn parse(&mut self) -> Result<Program> {
         let mut program = Vec::new();
         while let Some(tok) = self.peek() {
             match tok {
