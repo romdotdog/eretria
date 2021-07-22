@@ -43,6 +43,7 @@ impl fmt::Display for ParseError {
 
 pub type Result<T> = std::result::Result<T, ParseError>;
 
+#[derive(Debug)]
 pub enum Expr {
     Paren(Box<Expr>),
     Block(Vec<Expr>),
@@ -55,6 +56,7 @@ pub enum Expr {
     Return(Box<Expr>),
 }
 
+#[derive(Debug)]
 pub enum Stat {
     Fn(String, Vec<Expr>, Expr),
     Data(u64, String),
